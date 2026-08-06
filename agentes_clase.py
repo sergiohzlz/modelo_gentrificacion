@@ -1,0 +1,92 @@
+# coding:utf8
+
+class Agente(self):
+    """
+    clase para los agentes que tiene asociado
+    una posición [tupla (i,j)] y también un
+    real representando un salario 
+    """
+    def __init__(self, t : tuple):
+        """
+        Al inicial le pasamos la posición en la que
+        vive
+        """
+        self._pos = t
+        self._salario = -1
+
+    @property
+    def salario(self) -> float:
+        return self._salario
+    
+    @salario.setter
+    def salario(self, r : float) -> None:
+        """
+        Asignamos el salario definido en r
+        """
+        self._salario = r
+    
+
+    @property
+    def posicion(self) -> tuple:
+        return self._pos
+    
+    @posicion.setter
+    def posicion(self, t) -> None:
+        self._pos = t
+
+class Vecindario(self):
+
+    def __init__(self, 
+                 n      : int,
+                 q      : int,
+                 P      : list,   # lista de agentes
+                 params : dict,
+                 pad    : int = 2,
+                 k      : int,    # capacidad de carga de cada celda 
+                 rng = None):
+    """
+    Constructor
+    """
+    assert 2*pad < n, "El padding debe ser menor al tamaño de la matriz"
+    assert params['tipo'] in ['gaussian', 'power_law', 'binomial'], "f debe ser gaussian binomial o power_law"
+
+    self._pad    = pad
+    self._params = params
+    self._n      = n
+    self._Q      = len(P) # cantidad total de agentes
+    self._rng    = random.default_rng() if rng is None else rng
+
+    self._f       = f
+    self.V        = np.zeros((n,n)
+    datos         = self._genera_V(params)
+    self.V[pad:n-pad, pad:n-pad] = datos
+
+    def _genera_V(self, params : dict) -> np.array:
+        """
+        """
+        n = self._n
+        rng = self._rng
+
+        # interior
+        pad = self._pad
+        shp = (n -2*pad, n-2*pad)
+
+        tipo = params['tipo']
+        if tipo =='gaussian':
+            gauss_mean, gauss_std = params['gauss_mean'], params['gauss_std']
+            datos = rng.normal(loc=gauss_mean, scale=gauss-std, size=(shp[0], shp[1])
+            datos = np.abs(datos)
+        elif tipo == 'power_law':
+            pl_alpha = params['pl_alpha']
+            datos = rn.pareto(pl_alpha, size=shp) + 1
+        elif tipo == 'binomial':
+            bin_n, bin_p = params['bin_n'], params['bin_p']
+            datos = rng.binomial(n=bin_n, p=bin_p, size=shp)
+
+        else:
+            raise ValueError("La distribucion `tipo` de ser gaussian binomial o power_law")
+
+        return datos
+
+
+ 
