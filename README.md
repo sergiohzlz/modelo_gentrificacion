@@ -5,11 +5,12 @@ Los agentes se mueven dentro de un vecindario bidimensional y poseen atributos c
 
 
 ## 📁 Estructura del Proyecto
-
+``
 .
 ├── agentes_clase.py          # Módulo principal con las clases Agente y Vecindario
 ├── phd_tercer_semestre.ipynb # Script de ejemplo para ejecutar la simulación
 └── README.md                # Este archivo
+```
 
 
 ## 🧩 Clases Principales
