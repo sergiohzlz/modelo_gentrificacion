@@ -35,23 +35,21 @@ Clase envoltorio (`wrapper`) que representa a un agente individual dentro del ve
 
 ### `Vecindario`
 Clase que gestiona el entorno de simulación y la interacción entre agentes dentro de una malla bidimensional finita.
-Se establece una capa de renta con algún tipo de distribución subyacente (normal, power, binomial) $V \in \realset$
- con una periferia
-(_padding_) de valor 0. Encima se establecen algunos agentes 
+Se establece una capa de renta con algún tipo de distribución subyacente (normal, power, binomial) $V \in \mathcal{R}^{n \times n}$
+ con una periferia (_padding_) de valor 0. Cada celda puede alojar a `k` posibles agentes.
+
+ Al tiempo `t=0` se van distribuir los agentes respetando las condiciones de cada celda. En la periferia no debe haber agentes
+
 
 #### Atributos
-- `dimensiones` : `tuple` (ancho, alto) — Tamaño de la malla.
-- `agentes` : `list` — Lista de objetos `Agente` presentes en el vecindario.
+- `size`          :  — Tamaño de la malla.
+- `carga`         : `int` — k agentes por celda.
+- `distrib_renta` : `str` — Tipo de distribución.
 
 #### Métodos Principales
 | Método | Descripción |
 |--------|-------------|
-| `agregar_agente(agente)` | Añade un agente al vecindario. |
-| `remover_agente(agente)` | Elimina un agente del vecindario. |
-| `mover_agente(agente, dx, dy)` | Mueve un agente dentro de los límites de la malla. |
-| `listar_agentes()` | Muestra todos los agentes con sus coordenadas y salarios. |
-| `calcular_estadisticas()` | Retorna estadísticas básicas (ej. salario promedio, densidad). |
-| `simular_pasos(n_pasos)` | Ejecuta la simulación durante un número determinado de pasos de tiempo. |
+| ``     |             |
 
 #### Características del Entorno
 - **Malla finita**: Espacio discreto de tamaño definido.
@@ -63,24 +61,3 @@ Se establece una capa de renta con algún tipo de distribución subyacente (norm
 ## 🚀 Ejemplo de Uso
 
 ```python
-from agentes_clase import Agente, Vecindario
-
-# Crear vecindario de 10x10
-vecindario = Vecindario(ancho=10, alto=10)
-
-# Crear agentes
-agente1 = Agente(coordenada=(2, 3), salario=50000)
-agente2 = Agente(coordenada=(7, 8), salario=62000)
-
-# Agregar agentes al vecindario
-vecindario.agregar_agente(agente1)
-vecindario.agregar_agente(agente2)
-
-# Mover agente1
-vecindario.mover_agente(agente1, dx=1, dy=0)
-
-# Listar estado actual
-vecindario.listar_agentes()
-
-# Ejecutar simulación por 5 pasos
-vecindario.simular_pasos(5)

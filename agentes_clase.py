@@ -41,10 +41,10 @@ class Agente(object):
 class Vecindario(object):
 
     def __init__(self, 
-                 n      : int,
-                 q      : int,
+                 n      : int,    # dimensiones
+                 q      : int,    
                  P      : list,   # lista de agentes
-                 params : dict,
+                 params : dict,   # 
                  k      : int,    # capacidad de carga de cada celda 
                  pad    : int = 2,
                  rng          = None):
@@ -57,14 +57,29 @@ class Vecindario(object):
         self._pad    = pad
         self._params = params
         self._n      = n
-        self._Q      = len(P) # cantidad total de agentes
+        self._P      = P
+        self._k      = k 
         self._rng    = random.default_rng() if rng is None else rng
 
-        self._f       = f
         self.V        = np.zeros((n,n))
         datos         = self._genera_V(params)
         self.V[pad:n-pad, pad:n-pad] = datos
 
+    def __repr__(self):
+        return f"Vecindario {self.V.shape} con {len(self._P)} agentes"
+
+    @property 
+    def size(self):
+        return self._n 
+
+    @property
+    def carga(self):
+        return self._k 
+
+    @property
+    def distrib_renta(self):
+        return self._params['tipo']
+    
     def _genera_V(self, params : dict) -> np.array:
         """
         Función para generar el entorno inmobiliario 
@@ -92,3 +107,13 @@ class Vecindario(object):
             raise ValueError("La distribucion `tipo` de ser gaussian binomial o power_law")
 
         return datos
+
+    def _distribuye_pobladores(self):
+        n = self._n # dimension
+        k = self._k # capacidad de carga
+        V = self.V   # Vecindario 
+        P = self._P  # lista total de q agentes 
+
+
+
+
