@@ -8,16 +8,15 @@ class Agente(object):
     una posición [tupla (i,j)] y también un
     real representando un salario 
     """
-    def __init__(self, t : tuple):
+    def __init__(self):
         """
         Al inicial le pasamos la posición en la que
         vive
         """
-        self._pos = t
         self._salario = -1
 
     def __repr__(self):
-        return f"agente en {(self._pos[0], self._pos[1])} con salario {self._salario}"
+        return f"pos {tuple(self._pos)} - {float(self._salario)}"
 
     @property
     def salario(self) -> float:
@@ -70,8 +69,8 @@ class Vecindario(object):
 
         self.V        = np.zeros((n,n))
         datos         = self._genera_V(params)
-        self.V[pad:n-pad, pad:n-pad] = datos    # matriz de renta con un padding ya establecido
-        self.agentes  = None
+        self.V[pad:n-pad, pad:n-pad] = datos          # matriz de renta con un padding ya establecido
+        self._distribuye_pobladores() # distribuimos a los pobladores de V
 
     def __repr__(self):
         return f"Vecindario {self.V.shape} con {len(self._P)} agentes"
@@ -125,11 +124,8 @@ class Vecindario(object):
         Cada celda puede contener hasta k diferentes agentes y no debe haber nada en 
         la región de padding 
 
-    
         El resultado se almacena en self.agentes como:
-
-        {(i,j): [agente1, agente2, ...]}
-
+            {(i,j): [agente1, agente2, ...]}
         donde (i,j) es la posición de la celda.    
         """
         n = self._n
@@ -146,27 +142,27 @@ class Vecindario(object):
         capacidad = len(posiciones) * k
 
         self.agentes = {}
-        ocupacion = {
+        # cuantos hay en la celda pos for pos in posiciones
+        self.ocupacion = {
             pos: 0   for pos in posiciones
         }
-
-        for ag in P:
+        # print(f"Vamos a alojar a {len(P)} agentes")
+        for j,ag in enumerate(P):
             if len(P) > capacidad:
                 raise ValueError("No hay suficiente capacidad para alojar a todos los agentes")
 
             # Elegimos una posición aleatoria
             pos = rng.choice(posiciones)
-            while ocupacion[pos] >= k:
+            while self.ocupacion[tuple(pos)] >= k:
                 pos = rng.choice(posiciones)
 
             # Asignamos la posición al agente
+            self.ocupacion[tuple(pos)] += 1
             ag.posicion = pos
-            ocupacion[pos] += 1
 
             # Añadimos el agente al diccionario
-            if pos not in self.agentes:
-                self.agentes[pos] = []
-            self.agentes[pos].append(ag)
-            
-
+            if tuple(pos) not in self.agentes:
+                self.agentes[tuple(pos)] = []
+            self.agentes[tuple(pos)].append(ag)
+        
 
