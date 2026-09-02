@@ -41,15 +41,22 @@ class Agente(object):
 class Vecindario(object):
 
     def __init__(self, 
-                 n      : int,    # dimensiones
-                 q      : int,    
-                 P      : list,   # lista de agentes
-                 params : dict,   # 
-                 k      : int,    # capacidad de carga de cada celda 
+                 n      : int,      # dimensiones
+                 P      : list,     # lista de agentes
+                 params : dict,     # 
+                 k      : int = 3,  # capacidad de carga de cada celda 
                  pad    : int = 2,
                  rng          = None):
         """
         Constructor
+
+        Params
+        - n      : dimension de la matriz para establecer un mundo cuadrado
+        - P      : lista de agentes previamente generada
+        - params : parametros de la distribución de valores de la renta 
+        - k      : capacidad de carga por celda k=5
+        - pad    : padding de celda 
+        - rng None simulador de aleatoriedad de numpy
         """
         assert 2*pad < n, "El padding debe ser menor al tamaño de la matriz"
         assert params['tipo'] in ['gaussian', 'power_law', 'binomial'], "f debe ser gaussian binomial o power_law"
@@ -63,7 +70,8 @@ class Vecindario(object):
 
         self.V        = np.zeros((n,n))
         datos         = self._genera_V(params)
-        self.V[pad:n-pad, pad:n-pad] = datos
+        self.V[pad:n-pad, pad:n-pad] = datos    # matriz de renta con un padding ya establecido
+        self.agentes  = None
 
     def __repr__(self):
         return f"Vecindario {self.V.shape} con {len(self._P)} agentes"
@@ -79,6 +87,7 @@ class Vecindario(object):
     @property
     def distrib_renta(self):
         return self._params['tipo']
+
     
     def _genera_V(self, params : dict) -> np.array:
         """
@@ -109,11 +118,55 @@ class Vecindario(object):
         return datos
 
     def _distribuye_pobladores(self):
-        n = self._n # dimension
-        k = self._k # capacidad de carga
-        V = self.V   # Vecindario 
-        P = self._P  # lista total de q agentes 
+        """
+        Aloja a los agentes en un diccionario cuya llave es la entrada en la matriz 
+        self.V
 
+        Cada celda puede contener hasta k diferentes agentes y no debe haber nada en 
+        la región de padding 
 
+    
+        El resultado se almacena en self.agentes como:
+
+        {(i,j): [agente1, agente2, ...]}
+
+        donde (i,j) es la posición de la celda.    
+        """
+        n = self._n
+        k = self._k
+        pad = self._pad
+        rng = self._rng
+        P = self._P
+
+        # posiciones posibles para ubicar a los agentes
+        posiciones = [
+            (i, j) for i in range(pad, n-pad) for j in range(pad, n-pad)
+        ]
+        # Capacidad total disponible
+        capacidad = len(posiciones) * k
+
+        self.agentes = {}
+        ocupacion = {
+            pos: 0   for pos in posiciones
+        }
+
+        for ag in P:
+            if len(P) > capacidad:
+                raise ValueError("No hay suficiente capacidad para alojar a todos los agentes")
+
+            # Elegimos una posición aleatoria
+            pos = rng.choice(posiciones)
+            while ocupacion[pos] >= k:
+                pos = rng.choice(posiciones)
+
+            # Asignamos la posición al agente
+            ag.posicion = pos
+            ocupacion[pos] += 1
+
+            # Añadimos el agente al diccionario
+            if pos not in self.agentes:
+                self.agentes[pos] = []
+            self.agentes[pos].append(ag)
+            
 
 
