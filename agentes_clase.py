@@ -115,8 +115,8 @@ class Vecindario(object):
             raise ValueError("La distribucion `tipo` de ser gaussian binomial o power_law")
 
         return datos
-
-    def _distribuye_pobladores(self):
+    
+    def _distribuye_pobladores(self, dbg=True):
         """
         Aloja a los agentes en un diccionario cuya llave es la entrada en la matriz 
         self.V
@@ -136,33 +136,181 @@ class Vecindario(object):
 
         # posiciones posibles para ubicar a los agentes
         posiciones = [
-            (i, j) for i in range(pad, n-pad) for j in range(pad, n-pad)
+            (i, j)
+            for i in range(pad, n-pad) 
+            for j in range(pad, n-pad)
         ]
         # Capacidad total disponible
-        capacidad = len(posiciones) * k
+        n_agentes, n_pos = len(P), len(posiciones)
+        capacidad = n_pos * k
+        
+        # verificacion de que haya menos 
+        # agentes que posiciones posibles
+        if(n_agentes > capacidad):
+            raise ValueError(
+                f"No hay suficiente capacidad para alojar a los {n_agentes} agentes"
+                f"Solo hay {capacidad} posibles lugares"
+            )
 
+        # k posibles lugares para poner 
+        # los n_agentes
+        lugares = rng.choice(
+            capacidad,
+            size=n_agentes,
+            replace=False	
+        )
+        
+        
         self.agentes = {}
         # cuantos hay en la celda pos for pos in posiciones
         self.ocupacion = {
             pos: 0   for pos in posiciones
         }
-        # print(f"Vamos a alojar a {len(P)} agentes")
-        for j,ag in enumerate(P):
-            if len(P) > capacidad:
-                raise ValueError("No hay suficiente capacidad para alojar a todos los agentes")
-
-            # Elegimos una posición aleatoria
-            pos = rng.choice(posiciones)
-            while self.ocupacion[tuple(pos)] >= k:
-                pos = rng.choice(posiciones)
-
-            # Asignamos la posición al agente
-            self.ocupacion[tuple(pos)] += 1
+        if(dbg):
+            print(f"Vamos a alojar a {len(P)} agentes")
+        for ag, lugar in zip(P, lugares):        
+            # Primeros k lugares corresponden a la primera celda
+            # los siguientes k a la segunda, etc.
+            pos = posiciones[lugar // k]
             ag.posicion = pos
+            
+            if pos not in self.agentes:
+                self.agentes[pos] = []
 
-            # Añadimos el agente al diccionario
-            if tuple(pos) not in self.agentes:
-                self.agentes[tuple(pos)] = []
-            self.agentes[tuple(pos)].append(ag)
+            self.agentes[pos].append(ag)
+            self.ocupacion[pos] += 1
+
+    def __proporcion_poblacion(self, coef):
+        Q = []
+        return Q
+    
+    def itera(self, alfa, beta, dbg=True):
+        """
+        Método para llevar a cabo la iteración del modelo 
+        Se ejecuta en 3 pasos
+        1. Elección de agentes conformes C      V[i,j] <= salario  
+        2. Elección de agentes inconformes I    V[i,j] >  salario 
         
+        Parameters:
+            - alfa : proporción de agentes conformes que serán reubicados
+            - beta : proporción de agentes inconformes que serán reubicados
+        """
+        if not(0< alfa < 1):
+            raise ValueError(f"Error en alfa {alfa}")
+        if not(0< beta < 1):
+            raise ValueError(f"Error en beta {beta}")
+        # recuperamos las variables del objeto que vamos a ocupar
+        V = self.V
+        k = self._k
+        rng = self._rng
+        agentes = self.agentes 
+        ocupacion = self.ocupacion  # diccionario de ocupacion
+        
+        #conjuntos de agentes 
+        # C conformes e Inconformes I
+        C, I = [], []
+        for pos, pobladores in agentes.items():
+            for agente in pobladores:
+                if V[pos] <= agente.salario:
+                    C.append(agente)
+                else:
+                    I.append(agente)
+        if(dbg):
+            print(f"Las poblaciones C {len(C)} e I {len(I)}")
+        
+        # celdas con capacidad disponible al interior 
+        disponibles = [
+            pos for pos, n in ocupacion.items()
+            if n<k
+        ]
 
+        # for i in range(self._n):
+        #     for j in range(self._n):
+        #         pos =(i,j)
+        #         ocupacion = len(self.agentes.get(pos, []))
+        #         if ocupacion < k:
+        #             disponibles.append(pos)
+                    
+        # ---------------------------------------------------------
+        # Pobladores C: Desean cambiarse porque pueden 
+        # (sal >= V[i,j])
+        # ---------------------------------------------------------
+        prop_C = int(alfa * len(C))                     # proporcion de conformes
+        if ((prop_C > 0) and (len(disponibles) > 0)):
+            n_C = min(prop_C, len(C))
+            # escogemos los indices 
+            idxC = rng.choice(
+                len(C),
+                size=n_C,
+                replace=False
+            )
+            seleccionados_C = [C[i] for i in idxC]     # <- poblacion seleccionada de C
+            if(dbg):
+                print(f"Len seleccionados C {len(seleccionados_C)}")
+
+            # ahora vamos a actualizar su posicion 
+            for conforme in seleccionados_C:
+                # solamente usamos celdas que todavía tienen capacidad
+                if not disponibles:
+                    break
+                idx = rng.integers(len(disponibles))
+                posnva = disponibles[idx]
+
+                # sacar agente de su posición actual
+                posact = conforme.posicion
+                agentes[posact].remove(conforme)
+                ocupacion[posact] -= 1
+
+                # agregarlo a la nueva posición
+                self.agentes.setdefault(posnva, []).append(conforme)
+                ocupacion[posnva] += 1
+
+                conforme.posicion = posnva
+
+                # si se llena, eliminamos la celda de disponibles
+                if(ocupacion[posnva]) >= k:
+                    disponibles.pop[idx]
+
+        # ---------------------------------------------------------
+        # Pobladores I: su salario es menor que la renta reuerida
+        # sal < V[i,j]
+        # ---------------------------------------------------------
+
+        prop_I = int(beta * len(I))  # propocion de inconformes
+
+        if prop_I > 0:
+            idxI = rng.choice(
+                len(I),
+                size=prop_I,
+                replace=False
+            )
+            seleccionados_I = [I[i] for i in idxI]  # <- poblacion seleccionada de I
+            if(dbg):
+                print(f"Len seleccionados I {len(seleccionados_I)}")
+
+            for inconforme in seleccionados_I:
+                salario = inconforme.salario
+                # celdas que puede pagar y que tienen capacidad
+                candidatas = [
+                    pos for pos in disponibles
+                    if V[pos] <= salario
+                ]
+                if not candidatas:
+                    continue
+                idx = rng.integers(len(candidatas))
+                posnva = candidatas[idx]
+                # posición anterior
+                posact = inconforme.posicion
+                agentes[posact].remove(inconforme)
+                ocupacion[posact] -= 1
+                agentes[posact].remove(inconforme)
+                # actualizar posición
+                ocupacion[posnva] += 1
+                inconforme.posicion = posnva
+
+                if(ocupacion[posnva]) >= k:
+                    disponibles.remove(posnva)
+        self.ocupacion = {
+            pos: len(self.agentes.get(pos, []))
+            for pos in self.ocupacion
+        }
