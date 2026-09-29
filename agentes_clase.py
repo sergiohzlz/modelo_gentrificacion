@@ -160,7 +160,8 @@ class Vecindario(object):
             replace=False	
         )
         
-        
+        # diccionario de agentes por celda
+        # aqui vamos a poner a los agentes en la celda correspondiente
         self.agentes = {}
         # cuantos hay en la celda pos for pos in posiciones
         self.ocupacion = {
@@ -249,6 +250,8 @@ class Vecindario(object):
                 print(f"Len seleccionados C {len(seleccionados_C)}")
 
             # ahora vamos a actualizar su posicion 
+            # eligiendo una celda disponible al azar
+            # asegurandonos de que no se llene la celda
             for conforme in seleccionados_C:
                 # solamente usamos celdas que todavía tienen capacidad
                 if not disponibles:
@@ -258,18 +261,18 @@ class Vecindario(object):
 
                 # sacar agente de su posición actual
                 posact = conforme.posicion
-                agentes[posact].remove(conforme)
-                ocupacion[posact] -= 1
+                agentes[posact].remove(conforme)      # quitamos al agente de la celda actual
+                ocupacion[posact] -= 1                # indicamos que hay un agente menos en la celda actual
 
                 # agregarlo a la nueva posición
-                self.agentes.setdefault(posnva, []).append(conforme)
-                ocupacion[posnva] += 1
+                agentes.setdefault(posnva, []).append(conforme)
+                ocupacion[posnva] += 1                # indicamos que hay un agente más en la nueva celda
 
-                conforme.posicion = posnva
+                conforme.posicion = posnva            # le actualizamos la posición al agente
 
                 # si se llena, eliminamos la celda de disponibles
                 if(ocupacion[posnva]) >= k:
-                    disponibles.pop[idx]
+                    disponibles.remove(posnva)
 
         # ---------------------------------------------------------
         # Pobladores I: su salario es menor que la renta reuerida
@@ -278,6 +281,7 @@ class Vecindario(object):
 
         prop_I = int(beta * len(I))  # propocion de inconformes
 
+        # mismo caso que el anterior, pero ahora para los inconformes
         if prop_I > 0:
             idxI = rng.choice(
                 len(I),
@@ -288,29 +292,45 @@ class Vecindario(object):
             if(dbg):
                 print(f"Len seleccionados I {len(seleccionados_I)}")
 
+            # vamos a formar un diccionario de celdas con capacidad < k
+            # y ordenadas por renta V[i,j] de menor a mayor
+            # siempre y cuando la capacidad sea menor que k
+            disponibles = [
+                pos for pos, n in ocupacion.items() 
+                if n<k
+            ]
+            disponibles.sort(key=lambda pos: V[pos])  # ordenamos por renta
+            
+            # para cada inconforme, vamos a intentar alojarlo en una celda que pueda pagar
+            # y que tenga capacidad
             for inconforme in seleccionados_I:
                 salario = inconforme.salario
-                # celdas que puede pagar y que tienen capacidad
+                #celdas que puede pagar y que tienen capacidad
                 candidatas = [
                     pos for pos in disponibles
                     if V[pos] <= salario
                 ]
+
                 if not candidatas:
+                    if(dbg):
+                        print(f"No hay celdas disponibles para el agente {inconforme}")
                     continue
+
                 idx = rng.integers(len(candidatas))
                 posnva = candidatas[idx]
+
                 # posición anterior
                 posact = inconforme.posicion
                 agentes[posact].remove(inconforme)
                 ocupacion[posact] -= 1
-                agentes[posact].remove(inconforme)
+                
                 # actualizar posición
                 ocupacion[posnva] += 1
+                agentes.setdefault(posnva, []).append(inconforme)
                 inconforme.posicion = posnva
 
-                if(ocupacion[posnva]) >= k:
+                if(ocupacion[posnva]) > k:
                     disponibles.remove(posnva)
-        self.ocupacion = {
-            pos: len(self.agentes.get(pos, []))
-            for pos in self.ocupacion
-        }
+
+        self.ocupacion = ocupacion
+        self.agentes = agentes
