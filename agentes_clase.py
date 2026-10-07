@@ -295,29 +295,31 @@ class Vecindario(object):
             # vamos a formar un diccionario de celdas con capacidad < k
             # y ordenadas por renta V[i,j] de menor a mayor
             # siempre y cuando la capacidad sea menor que k
-            disponibles = [
-                pos for pos, n in ocupacion.items() 
-                if n<k
-            ]
-            disponibles.sort(key=lambda pos: V[pos])  # ordenamos por renta
+
+            # disponibles.sort(key=lambda pos: V[pos])  # ordenamos por renta
             
             # para cada inconforme, vamos a intentar alojarlo en una celda que pueda pagar
             # y que tenga capacidad
             for inconforme in seleccionados_I:
                 salario = inconforme.salario
                 #celdas que puede pagar y que tienen capacidad
-                candidatas = [
-                    pos for pos in disponibles
-                    if V[pos] <= salario
+                # y cumplen con ser pagables por el agente
+                disponibles = [
+                    pos for pos, n in ocupacion.items() 
+                    if (n<k and V[pos] <= salario)                    
                 ]
+                # candidatas = [
+                #     pos for pos in disponibles
+                #     if V[pos] <= salario
+                # ]
 
-                if not candidatas:
+                if not disponibles:
                     if(dbg):
                         print(f"No hay celdas disponibles para el agente {inconforme}")
                     continue
 
-                idx = rng.integers(len(candidatas))
-                posnva = candidatas[idx]
+                idx = rng.integers(len(disponibles))
+                posnva = disponibles[idx]
 
                 # posición anterior
                 posact = inconforme.posicion
