@@ -45,6 +45,8 @@ class Vecindario(object):
                  params : dict,     # 
                  k      : int = 3,  # capacidad de carga de cada celda 
                  pad    : int = 2,
+                 a      : float = 0.1,
+                 b      : float = 0.2,
                  rng          = None):
         """
         Constructor
@@ -59,12 +61,16 @@ class Vecindario(object):
         """
         assert 2*pad < n, "El padding debe ser menor al tamaño de la matriz"
         assert params['tipo'] in ['gaussian', 'power_law', 'binomial'], "f debe ser gaussian binomial o power_law"
-
+        assert 0<a<1, f"Error en a {a}"
+        assert 0<b<1, f"Error en b {b}"
+        
         self._pad    = pad
         self._params = params
         self._n      = n
         self._P      = P
         self._k      = k 
+        self._a      = a
+        self._b      = b
         self._rng    = random.default_rng() if rng is None else rng
 
         self.V        = np.zeros((n,n))
@@ -185,7 +191,7 @@ class Vecindario(object):
         Q = []
         return Q
     
-    def itera(self, alfa, beta, dbg=True):
+    def itera(self, dbg=True):
         """
         Método para llevar a cabo la iteración del modelo 
         Se ejecuta en 3 pasos
@@ -196,11 +202,10 @@ class Vecindario(object):
             - alfa : proporción de agentes conformes que serán reubicados
             - beta : proporción de agentes inconformes que serán reubicados
         """
-        if not(0< alfa < 1):
-            raise ValueError(f"Error en alfa {alfa}")
-        if not(0< beta < 1):
-            raise ValueError(f"Error en beta {beta}")
+
         # recuperamos las variables del objeto que vamos a ocupar
+        alfa = self._a
+        beta = self._b
         V = self.V
         k = self._k
         rng = self._rng
