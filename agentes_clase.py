@@ -141,6 +141,7 @@ class Vecindario(object):
         P = self._P
 
         # posiciones posibles para ubicar a los agentes
+        # al inicio de la distribucion 
         posiciones = [
             (i, j)
             for i in range(pad, n-pad) 
@@ -163,7 +164,7 @@ class Vecindario(object):
         lugares = rng.choice(
             capacidad,
             size=n_agentes,
-            replace=False	
+            replace=False
         )
         
         # diccionario de agentes por celda
@@ -183,14 +184,16 @@ class Vecindario(object):
             
             if pos not in self.agentes:
                 self.agentes[pos] = []
-
+            
             self.agentes[pos].append(ag)
             self.ocupacion[pos] += 1
+            
+        # Agregamos las posiciones del padding
+        for i in range(n):
+            for j in range(n):
+                if i < pad or i >= n-pad or j < pad or j >= n-pad:
+                    self.ocupacion[(i, j)] = 0
 
-    def __proporcion_poblacion(self, coef):
-        Q = []
-        return Q
-    
     def itera(self, dbg=True):
         """
         Método para llevar a cabo la iteración del modelo 
@@ -341,3 +344,115 @@ class Vecindario(object):
 
         self.ocupacion = ocupacion
         self.agentes = agentes
+        
+def fd_bins(data):
+    """
+    Método Freedman–Diaconis para calcular número de bins para histograma
+    """
+    n = len(data)
+    if(n<2):
+        return 1
+    rango = data.max() - data.min()
+    if(rango==0):
+        return 1
+    iqr = np.percentile(data, 75) - np.percentile(data, 25)
+    if iqr == 0:
+        return max(1, int(np.ceil(np.sqrt(n))))
+    h = 2 * iqr / n**(1/3)
+    return int(np.ceil(rango / h))  
+
+def ocupacion(V, fbins=fd_bins):
+    """
+    Ocupación en cada celda 
+    """
+    O = {k: v for k,v in V.ocupacion.items()}
+    data = np.array(list(V.ocupacion.values()))
+    nbins = fbins(data)
+    return data, nbins
+
+def hacinamiento(V, g=3, fbins=fd_bins):
+    """
+    Hacinamiento de una celda en V[i,j]. Proporción de agentes
+    que usan la celda respecto de la capaciadad 
+    """
+    H =  {k: v/g for k,v in V.ocupacion.items()}
+    data = np.array(list(H.values()))
+    nbins = fbins(data)
+    return data, nbins
+
+def estres(V, fbins=fd_bins):
+    """
+    Conteo de agentes estresados en V.V. 
+    Se guardan todos los agentes en la celda V.V[k] que ganen
+    menos de lo que pide el sitio 
+    """
+    E = dict()
+    
+    for k, lista in V.agentes.items():
+        for ag in lista:
+            if ag.salario <= V.V[k]:
+                E[k] = E.get(k, 0) + 1
+    datos = np.array(list(E.values()))
+    bins = fbins(datos)
+    return datos, bins
+
+
+
+def dict_a_array(d_pos : dict, shp : tuple)-> np.array:
+    M = np.zeros(shp)
+    for k,v in  d_pos.items():
+        M[k] = v
+    return M
+
+def crea_agentes(N=50_000, mu=5, std=1):
+    agentes = []
+    salarios = std*np.random.randn(N) + mu
+    salarios = np.clip(salarios, a_min=0, a_max=salarios.max())
+    for i in range(N):
+        ag = Agente()
+        ag.salario = salarios[i]
+        agentes.append(ag)
+    return agentes
+
+def experimento(a=0.1, b=0.2, k=4, n=100, iters=1_000, N=30_000, pad=2, mu=5, p=50, std=1):
+    """
+    Instancia de un experimento con los parámetros
+    n      = tamaño de la malla
+    mu     = valor medio del salario de cada agente
+    iters  = cantidad de agentes 
+    M      = cantidad de iteraciones
+    a      = alfa
+    b      = beta 
+    k      = capacidad de carga
+    p      = con qué frecuencia se reporta en pantalla
+    """
+    T = np.zeros((iters,n,n))
+    E, H = [], []
+    agentes = crea_agentes(N=N, mu=mu, std=std)
+    n_ags = len(agentes)
+    print(f"Generando vecindario de {n}^2 capacidad de carga {k} y {N} agentes")
+    V = Vecindario(n=n,
+                     k=k,
+                     P=agentes,                             
+                     params={'tipo' : 'gaussian', 'gauss_mean': mu, 'gauss_std': std}, 
+                     a = a, 
+                     b = b,
+                     pad=pad)
+    T[0] = dict_a_array(V.ocupacion, (n,n))
+    e, bins_e = estres(V)
+    h, bins_h = hacinamiento(V)
+    
+    print(f"Corriendo las {iters} iteraciones")
+    for j in range(1,iters):
+        if(not j%p):
+            print(f"Iteracion {j}")
+            e = estres(V)[0]
+            h = hacinamiento(V, g=k)[0]
+            E.append(e)
+            H.append(h)
+        V.itera(dbg=False)
+        T[j] = dict_a_array(V.ocupacion, (n,n))
+        
+    print(f"--> Iteracion {iters} <--")
+    
+    return T, E, H, bins_e, bins_h
