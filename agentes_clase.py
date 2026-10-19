@@ -345,59 +345,73 @@ class Vecindario(object):
         self.ocupacion = ocupacion
         self.agentes = agentes
         
-def fd_bins(data):
-    """
-    Método Freedman–Diaconis para calcular número de bins para histograma
-    """
-    n = len(data)
-    if(n<2):
-        return 1
-    rango = data.max() - data.min()
-    if(rango==0):
-        return 1
-    iqr = np.percentile(data, 75) - np.percentile(data, 25)
-    if iqr == 0:
-        return max(1, int(np.ceil(np.sqrt(n))))
-    h = 2 * iqr / n**(1/3)
-    return int(np.ceil(rango / h))  
+class Obs(object):
 
-def ocupacion(V, fbins=fd_bins):
-    """
-    Ocupación en cada celda 
-    """
-    O = {k: v for k,v in V.ocupacion.items()}
-    data = np.array(list(V.ocupacion.values()))
-    nbins = fbins(data)
-    return data, nbins
-
-def hacinamiento(V, g=3, fbins=fd_bins):
-    """
-    Hacinamiento de una celda en V[i,j]. Proporción de agentes
-    que usan la celda respecto de la capaciadad 
-    """
-    H =  {k: v/g for k,v in V.ocupacion.items()}
-    data = np.array(list(H.values()))
-    nbins = fbins(data)
-    return data, nbins
-
-def estres(V, fbins=fd_bins):
-    """
-    Conteo de agentes estresados en V.V. 
-    Se guardan todos los agentes en la celda V.V[k] que ganen
-    menos de lo que pide el sitio 
-    """
-    E = dict()
+    @staticmethod
+    def fd_bins(data):
+        """
+        Método Freedman–Diaconis para calcular número de bins para histograma
+        """
+        n = len(data)
+        if(n<2):
+            return 1
+        rango = data.max() - data.min()
+        if(rango==0):
+            return 1
+        iqr = np.percentile(data, 75) - np.percentile(data, 25)
+        if iqr == 0:
+            return max(1, int(np.ceil(np.sqrt(n))))
+        h = 2 * iqr / n**(1/3)
+        return int(np.ceil(rango / h))  
     
-    for k, lista in V.agentes.items():
-        for ag in lista:
-            if ag.salario <= V.V[k]:
-                E[k] = E.get(k, 0) + 1
-    datos = np.array(list(E.values()))
-    bins = fbins(datos)
-    return datos, bins
+    @staticmethod
+    def ocupacion(V):
+        """
+        Ocupación en cada celda 
+        Returns:
+        Tuple(np.array, float)
+        """
+        data = np.array(list(V.ocupacion.values()))
+        nbins = Obs.fd_bins(data)
+        return data, nbins
+    
+    @staticmethod
+    def hacinamiento(V, k=4):
+        """
+        Hacinamiento de una celda en V[i,j]. Proporción de agentes
+        que usan la celda respecto de la capaciadad 
+        
+        Returns:
+        Tuple(np.array, float)
+        """
+        O, nbins = Obs.ocupacion(V)
+        data = O/k
+        return data, nbins
 
+    @staticmethod
+    def estres(V, fbins=fd_bins) -> list:
+        """
+        Observables que mide
+        1. Estres por agente se define como el porcentaje de salario dedicado a renta
+           en todos los agentes que el salario <= Renta
+        2. Remanente que se define como la cantidad de salario remantente después
+           de pagar la renta
+           
+        Returns:
+        list(np.array) con [1 , 2]
+        """
+        estresados   = []
+        remanente    = []
+        for cel in V.agentes:
+            # print(f"{cel} : {len(V.agentes[cel])} - renta {V.V[cel]}")
+            por_celda    = [(ag.salario, V.V[cel])  
+                            for ag in V.agentes[cel] ]
+            estresados   += [x[0] / x[1] for x in por_celda if x[0] <= x[1]]
+            remanente    += [x[0]-x[1]   for x in por_celda]
+        a_estres, a_reman = np.array(estresados), np.array(remanente)
+        return a_estres, a_reman, Obs.fd_bins(a_estres)
 
-
+# funciones generales
 def dict_a_array(d_pos : dict, shp : tuple)-> np.array:
     M = np.zeros(shp)
     for k,v in  d_pos.items():
@@ -414,7 +428,9 @@ def crea_agentes(N=50_000, mu=5, std=1):
         agentes.append(ag)
     return agentes
 
-def experimento(a=0.1, b=0.2, k=4, n=100, iters=1_000, N=30_000, pad=2, mu=5, p=50, std=1):
+def experimento(a=0.1,       b=0.2, k=4, n=100, 
+                iters=1_000, N=30_000, 
+                pad=2, mu=5, p=50, std=1):
     """
     Instancia de un experimento con los parámetros
     n      = tamaño de la malla
@@ -427,32 +443,38 @@ def experimento(a=0.1, b=0.2, k=4, n=100, iters=1_000, N=30_000, pad=2, mu=5, p=
     p      = con qué frecuencia se reporta en pantalla
     """
     T = np.zeros((iters,n,n))
-    E, H = [], []
+    observables = {'estres'    : [],
+                   'remanente' : [],
+                   'ocupacion' : []}
     agentes = crea_agentes(N=N, mu=mu, std=std)
     n_ags = len(agentes)
     print(f"Generando vecindario de {n}^2 capacidad de carga {k} y {N} agentes")
     V = Vecindario(n=n,
-                     k=k,
-                     P=agentes,                             
-                     params={'tipo' : 'gaussian', 'gauss_mean': mu, 'gauss_std': std}, 
-                     a = a, 
-                     b = b,
-                     pad=pad)
+                   k=k,
+                   P=agentes,                             
+                   params={'tipo' : 'gaussian', 'gauss_mean': mu, 'gauss_std': std}, 
+                   a = a, 
+                   b = b,
+                   pad=pad)
     T[0] = dict_a_array(V.ocupacion, (n,n))
-    e, bins_e = estres(V)
-    h, bins_h = hacinamiento(V)
+    e, h, bins_e = Obs.estres(V)
+    o, bins_o    = Obs.ocupacion(V)
+    observables['estres'].append(e)
+    observables['remanente'].append(h)
+    observables['ocupacion'].append(o)
     
     print(f"Corriendo las {iters} iteraciones")
     for j in range(1,iters):
         if(not j%p):
             print(f"Iteracion {j}")
-            e = estres(V)[0]
-            h = hacinamiento(V, g=k)[0]
-            E.append(e)
-            H.append(h)
+            e,h, _ = Obs.estres(V)
+            o, _   = Obs.ocupacion(V)
+            observables['estres'].append(e)
+            observables['remanente'].append(h)
+            observables['ocupacion'].append(o)
         V.itera(dbg=False)
         T[j] = dict_a_array(V.ocupacion, (n,n))
         
     print(f"--> Iteracion {iters} <--")
     
-    return T, E, H, bins_e, bins_h
+    return T, observables, bins_e
