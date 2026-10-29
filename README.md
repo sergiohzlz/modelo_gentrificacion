@@ -16,7 +16,8 @@ Los agentes se mueven dentro de un vecindario bidimensional y poseen atributos c
 ## 🧩 Clases Principales
 
 ### `Agente`
-Clase envoltorio (`wrapper`) que representa a un agente individual dentro del vecindario.
+Clase envoltorio (`wrapper`) que representa a un agente individual dentro del vecindario con 
+salario y posicion
 
 #### Atributos
 - `posicion` : `tuple` (x, y) — Posición actual del agente en la malla.
@@ -34,12 +35,16 @@ Clase envoltorio (`wrapper`) que representa a un agente individual dentro del ve
 ---
 
 ### `Vecindario`
-Clase que gestiona el entorno de simulación y la interacción entre agentes dentro de una malla bidimensional finita.
-Se establece una capa de renta con algún tipo de distribución subyacente (normal, power, binomial) $V \in \mathcal{R}^{n \times n}$
- con una periferia (_padding_) de valor 0. Cada celda puede alojar a `k` posibles agentes.
+Clase que gestiona el entorno de simulación y la interacción entre agentes dentro de una malla 
+bidimensional finita.
+Se establece una capa de renta con algún tipo de distribución subyacente (normal, power, binomial) 
+$V \in \mathcal{R}^{n \times n}$
+y también se considera una periferia (_padding_) de valor 0. 
+Cada celda puede alojar a `k` posibles agentes (_capacidad de carga_).
 
- Al tiempo `t=0` se van distribuir los agentes respetando las condiciones de cada celda. En la periferia no debe haber agentes
+Al tiempo `t=0` se van distribuir los agentes respetando las condiciones de cada celda. En la periferia no debe haber agentes
 
+Después se itera una cantidad fija de iteraciones. 
 
 #### Atributos
 - `size`          :  — Tamaño de la malla.
@@ -47,8 +52,17 @@ Se establece una capa de renta con algún tipo de distribución subyacente (norm
 - `distrib_renta` : `str` — Tipo de distribución.
 
 #### Métodos Principales
-| Método | Descripción |
-|--------|-------------|
+| Método     | Descripción         | Parámetros                                         |
+|------------|---------------------|----------------------------------------------------|
+| __init__   | Constructor         | n (int) Dimensión de la malla                      |
+|            |                     | P lista de agentes ya instanciados                 |
+|            |                     | params (dict) Para distribución de renta           |
+|            |                     | k (int) Capacidad de carga por celda               |
+|            |                     | pad (int) Periferia o _padding_ de malla           |
+|            |                     | a, b (float) Parametros para proporción de agentes |
+|----------- |---------------------|----------------------------------------------------|
+| itera      | Método para iterar  | dbg (boolean) True, imprime algunos valores        |
+| -----------|---------------------|----------------------------------------------------|
 | ``     |             |
 
 #### Características del Entorno
