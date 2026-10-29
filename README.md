@@ -80,8 +80,7 @@ El módulo `agentes_clase` típicamente se identifica como `A` contiene las clas
 | Método         | Descripción                  | Parámetros                                                   |
 |----------------|------------------------------|--------------------------------------------------------------|
 |`crea_agentes`  | Función para crear agentes   | N=50_000, mu=5, std=1. Determinan la media de salario y su sd|
-| `dict_a_array` | Función que convierte el diccionario
-                                      en array  | d_pos : dict, shp : tuple -> np.array                        |
+| `dict_a_array` | Función que convierte el diccionario en array  | d_pos : dict, shp : tuple -> np.array                        |
 
 
 ## 🚀 Ejemplo de Uso
