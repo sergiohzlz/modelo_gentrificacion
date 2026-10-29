@@ -54,16 +54,16 @@ Después se itera una cantidad fija de iteraciones.
 #### Métodos Principales
 | Método     | Descripción         | Parámetros                                         |
 |------------|---------------------|----------------------------------------------------|
-| __init__   | Constructor         | n (int) Dimensión de la malla                      |
-|            |                     | P lista de agentes ya instanciados                 |
-|            |                     | params (dict) Para distribución de renta           |
-|            |                     | k (int) Capacidad de carga por celda               |
-|            |                     | pad (int) Periferia o _padding_ de malla           |
-|            |                     | a, b (float) Parametros para proporción de agentes |
-|----------- |---------------------|----------------------------------------------------|
-| itera      | Método para iterar  | dbg (boolean) True, imprime algunos valores        |
-| -----------|---------------------|----------------------------------------------------|
+|`__init__()`  | Constructor       | n (int) Dimensión de la malla. P lista de agentes ya instanciados params (dict) Para distribución de renta. k (int) Capacidad de carga por celda. pad (int) Periferia o _padding_ de malla. a, b (float) Parametros para proporción de agentes |
+| `itera`     | Método para iterar  | dbg (boolean) True, imprime algunos valores        |
 | ``     |             |
+
+---
+### `Obs`
+
+Clase con métodos para medir algunos observables
+
+Se implementan algunos métodos que permiten sacar estadísticos sobre la malla 
 
 #### Características del Entorno
 - **Malla finita**: Espacio discreto de tamaño definido.
