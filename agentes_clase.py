@@ -1,6 +1,6 @@
 # coding:utf8
 import numpy as np
-from numpy import random 
+from numpy import random  
 
 class Agente(object):
     """
@@ -194,7 +194,9 @@ class Vecindario(object):
                 if i < pad or i >= n-pad or j < pad or j >= n-pad:
                     self.ocupacion[(i, j)] = 0
 
+
     def itera(self, dbg=True):
+
         """
         Método para llevar a cabo la iteración del modelo 
         Se ejecuta en 3 pasos
@@ -219,8 +221,119 @@ class Vecindario(object):
         # C conformes e Inconformes I
         C, I = [], []
         for pos, pobladores in agentes.items():
+            vpos = V[pos]
             for agente in pobladores:
-                if V[pos] <= agente.salario:
+                if vpos <= agente.salario:
+                    C.append(agente)
+                else:
+                    I.append(agente)
+        if(dbg):
+            print(f"Las poblaciones C {len(C)} e I {len(I)}")
+        
+
+        prop_C = int(alfa * len(C))  # proporcion de conformes
+        prop_I = int(beta * len(I))  # propocion de inconformes
+
+        n_C = min(prop_C, len(C))  # escogemos los indices 
+        seleccionados_C = rng.choice(C, size=n_C, replace=False) 
+        n_I = min(prop_I, len(I))  # escogemos los indices
+        seleccionados_I = rng.choice(I, size=n_I, replace=False)
+
+        selected_agents = list(seleccionados_C) + list(seleccionados_I)
+        selected_agents.sort(key=lambda ag: ag.salario, reverse=True)  # ordenamos por salario
+
+        disponibles = []
+
+        for pos, n in ocupacion.items():
+            espaciosabiertos = k - n
+            if espaciosabiertos > 0:
+                precio = self.V[pos]
+                posycosto = tuple([pos, precio])
+                disponibles += espaciosabiertos * [posycosto]
+
+        # Primero la gente se sale de donde está, se queda "flotando"
+        for agent in selected_agents:
+            disponibles.append((agent.posicion, self.V[agent.posicion]))  # agregamos la posición actual del agente con su precio
+
+        disponibles.sort(key=lambda posycosto: posycosto[1], reverse=True)  # ordenamos por renta
+
+
+        # selected_agents están ordenados por salario de mayor a menor
+        # disponibles están ordenados por renta de mayor a menor
+       
+        # Todos los que están flotando, se van a intentar reubicarse
+
+        for agent in selected_agents:
+            pos_seleccionada, disponibles = self._seleccionar_entre_disponibles(disponibles, agent.salario)
+            if pos_seleccionada is not None:
+                # posición anterior
+                posact = agent.posicion
+                agentes[posact].remove(agent)
+                ocupacion[posact] -= 1
+                
+                # actualizar posición
+                ocupacion[pos_seleccionada] += 1
+                agentes.setdefault(pos_seleccionada, []).append(agent)
+                agent.posicion = pos_seleccionada
+
+        
+
+
+
+    def _seleccionar_entre_disponibles(self, disponibles, salario):
+        """
+        Selecciona una celda disponible para un agente con salario dado
+        Parameters:
+            - disponibles : lista de tuplas (pos, precio) de celdas disponibles, ordenadas de mayor a menor precio
+            - salario     : salario del agente que busca una celda
+        """
+        idxbreak = 0
+        for pos, precio in disponibles:
+            if precio > salario:
+                break
+            idxbreak += 1
+        disponibles_aptas = disponibles[idxbreak:]
+    
+        if not disponibles_aptas:
+            return None, disponibles  # No hay celdas aptas
+
+
+        idx = self._rng.choice(len(disponibles_aptas))
+        pos_seleccionada = disponibles_aptas[idx][0]
+        # Remover la celda seleccionada de la lista de disponibles
+        disponibles_ = disponibles_aptas[:idx] + disponibles_aptas[idx+1:]
+
+        return pos_seleccionada, disponibles_
+
+
+    def itera_(self, dbg=True):
+        """
+        Método para llevar a cabo la iteración del modelo 
+        Se ejecuta en 3 pasos
+        1. Elección de agentes conformes C      V[i,j] <= salario  
+        2. Elección de agentes inconformes I    V[i,j] >  salario 
+        
+        Parameters:
+            - alfa : proporción de agentes conformes que serán reubicados
+            - beta : proporción de agentes inconformes que serán reubicados
+        """
+
+        # recuperamos las variables del objeto que vamos a ocupar
+        alfa = self._a
+        beta = self._b
+        V = self.V
+        k = self._k
+        rng = self._rng
+        agentes = self.agentes 
+        ocupacion = self.ocupacion  # diccionario de ocupacion
+        
+        #conjuntos de agentes 
+        # C conformes e Inconformes I
+        C, I = [], []
+        for pos, pobladores in agentes.items():
+            vpos = V[pos]
+            for agente in pobladores:
+                if vpos <= agente.salario:
                     C.append(agente)
                 else:
                     I.append(agente)
@@ -228,10 +341,17 @@ class Vecindario(object):
             print(f"Las poblaciones C {len(C)} e I {len(I)}")
         
         # celdas con capacidad disponible al interior 
-        disponibles = [
-            pos for pos, n in ocupacion.items()
-            if n<k
-        ]
+        # disponibles = [
+        #     pos for pos, n in ocupacion.items()
+        #     if n<k
+        # ]
+        disponibles = []
+        for pos, n in ocupacion.items():
+            espaciosabiertos = k - n
+            if espaciosabiertos > 0:
+                disponibles += espaciosabiertos * [pos]
+
+        rng.shuffle(disponibles)  # barajamos las celdas disponibles
 
         # for i in range(self._n):
         #     for j in range(self._n):
@@ -264,8 +384,8 @@ class Vecindario(object):
                 # solamente usamos celdas que todavía tienen capacidad
                 if not disponibles:
                     break
-                idx = rng.integers(len(disponibles))
-                posnva = disponibles[idx]
+
+                posnva = disponibles.pop()
 
                 # sacar agente de su posición actual
                 posact = conforme.posicion
@@ -278,9 +398,6 @@ class Vecindario(object):
 
                 conforme.posicion = posnva            # le actualizamos la posición al agente
 
-                # si se llena, eliminamos la celda de disponibles
-                if(ocupacion[posnva]) >= k:
-                    disponibles.remove(posnva)
 
         # ---------------------------------------------------------
         # Pobladores I: su salario es menor que la renta reuerida
@@ -428,6 +545,8 @@ def crea_agentes(N=50_000, mu=5, std=1):
         agentes.append(ag)
     return agentes
 
+
+import datetime
 def experimento(a=0.1,       b=0.2, k=4, n=100, 
                 iters=1_000, N=30_000, 
                 pad=2, mu=5, p=50, std=1):
@@ -442,6 +561,7 @@ def experimento(a=0.1,       b=0.2, k=4, n=100,
     k      = capacidad de carga
     p      = con qué frecuencia se reporta en pantalla
     """
+
     T = np.zeros((iters,n,n))
     observables = {'estres'    : [],
                    'remanente' : [],
@@ -462,9 +582,11 @@ def experimento(a=0.1,       b=0.2, k=4, n=100,
     observables['estres'].append(e)
     observables['remanente'].append(h)
     observables['ocupacion'].append(o)
-    
+
+
     print(f"Corriendo las {iters} iteraciones")
     for j in range(1,iters):
+        dinititer = datetime.datetime.now()
         if(not j%p):
             print(f"Iteracion {j}")
             e,h, _ = Obs.estres(V)
@@ -474,7 +596,11 @@ def experimento(a=0.1,       b=0.2, k=4, n=100,
             observables['ocupacion'].append(o)
         V.itera(dbg=False)
         T[j] = dict_a_array(V.ocupacion, (n,n))
-        
+        denditer = datetime.datetime.now()
+        print(f"\t\tTiempo de iteracion {j} {(denditer-dinititer).total_seconds()} segundos")
+
+
+
     print(f"--> Iteracion {iters} <--")
     
     return T, observables, bins_e
