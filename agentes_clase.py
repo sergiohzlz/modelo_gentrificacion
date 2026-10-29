@@ -256,15 +256,21 @@ class Vecindario(object):
             disponibles.append((agent.posicion, self.V[agent.posicion]))  # agregamos la posición actual del agente con su precio
 
         disponibles.sort(key=lambda posycosto: posycosto[1], reverse=True)  # ordenamos por renta
+        disp_indicador = np.ones(len(disponibles), dtype=int)  # array binario de disponibilidad
+        disp_precios = np.array([posycosto[1] for posycosto in disponibles])  # array de precios
+        disp_posiciones = [posycosto[0] for posycosto in disponibles]  # array de posiciones
 
 
         # selected_agents están ordenados por salario de mayor a menor
         # disponibles están ordenados por renta de mayor a menor
        
         # Todos los que están flotando, se van a intentar reubicarse
-
         for agent in selected_agents:
-            pos_seleccionada, disponibles = self._seleccionar_entre_disponibles(disponibles, agent.salario)
+
+            pos_seleccionada, disp_indicador, disp_precios, disp_posiciones = self._seleccionar_entre_disponibles(disp_indicador, 
+                                                                                     disp_precios, 
+                                                                                     disp_posiciones, 
+                                                                                     agent.salario)
             if pos_seleccionada is not None:
                 # posición anterior
                 posact = agent.posicion
@@ -280,30 +286,42 @@ class Vecindario(object):
 
 
 
-    def _seleccionar_entre_disponibles(self, disponibles, salario):
+    def _seleccionar_entre_disponibles(self, 
+                                       disp_indicador : np.ndarray, 
+                                       disp_precios : np.ndarray,
+                                       disp_posiciones : list,
+
+                                       salario: float):
         """
         Selecciona una celda disponible para un agente con salario dado
         Parameters:
-            - disponibles : lista de tuplas (pos, precio) de celdas disponibles, ordenadas de mayor a menor precio
+            - disponibles_array : un arreglo binario que dice si la celda está disponible (1) o no (0)
+            - diposnibles_precio : un arreglo con los precios de las celdas
+            - disponibles_posiciones : una lista de tuplas con las posiciones de las celdas
             - salario     : salario del agente que busca una celda
         """
-        idxbreak = 0
-        for pos, precio in disponibles:
-            if precio > salario:
-                break
-            idxbreak += 1
-        disponibles_aptas = disponibles[idxbreak:]
-    
-        if not disponibles_aptas:
-            return None, disponibles  # No hay celdas aptas
+        assert len(disp_indicador) == len(disp_precios) == len(disp_posiciones), "Los arreglos de disponibles deben tener la misma longitud"
+
+        # Las aptas son solo aquellas en donde el precio es menor o igual al salario del agente y que disponibles_array sea 1 (disponible)
+        disponibles_aptas = np.nonzero((disp_precios <= salario) * disp_indicador)[0]
+
+        if len(disponibles_aptas) == 0:
+            return None, disp_indicador, disp_precios, disp_posiciones  # No hay celdas aptas
 
 
-        idx = self._rng.choice(len(disponibles_aptas))
-        pos_seleccionada = disponibles_aptas[idx][0]
+        idx = self._rng.choice(disponibles_aptas, size=1, replace=False)[0]
+        pos_seleccionada = disp_posiciones[idx]
         # Remover la celda seleccionada de la lista de disponibles
-        disponibles_ = disponibles_aptas[:idx] + disponibles_aptas[idx+1:]
+        disp_indicador[idx] = 0  # Marcamos la celda como no disponible
+        #disponibles_ = disponibles_aptas
 
-        return pos_seleccionada, disponibles_
+        
+        min_apta = np.min(disponibles_aptas)
+        disp_indicador = disp_indicador[min_apta:]  # Actualizamos el array de disponibles para que solo contenga celdas a partir de la mínima apta
+        disp_precios = disp_precios[min_apta:]
+        disp_posiciones = disp_posiciones[min_apta:]
+
+        return pos_seleccionada, disp_indicador, disp_precios, disp_posiciones
 
 
     def itera_(self, dbg=True):
