@@ -111,8 +111,8 @@ class Vecindario(object):
             datos = rng.normal(loc=gauss_mean, scale=gauss_std, size=(shp[0], shp[1]))
             datos = np.abs(datos)
         elif tipo == 'power_law':
-            pl_alpha = params['pl_alpha']
-            datos = rn.pareto(pl_alpha, size=shp) + 1
+            mu = params['mu']
+            datos = rng.exponential(scale=mu, size=shp) + 1
         elif tipo == 'binomial':
             bin_n, bin_p = params['bin_n'], params['bin_p']
             datos = rng.binomial(n=bin_n, p=bin_p, size=shp)
@@ -563,11 +563,22 @@ def crea_agentes(N=50_000, mu=5, std=1):
         agentes.append(ag)
     return agentes
 
+def crea_agentes_exponencial(rng, N=50_000, mu=15_000):
+    salarios = rng.exponential(scale=mu, size=N)
+    agentes = []
+    np.random.shuffle(salarios)
+
+    for i in range(N):
+        ag = Agente()
+        ag.salario = salarios[i]
+        agentes.append(ag)
+    return agentes
+
 
 import datetime
-def experimento(a=0.1,       b=0.2, k=4, n=100, 
-                iters=1_000, N=30_000, 
-                pad=2, mu=5, p=50, std=1):
+def experimento_normal(a=0.1,       b=0.2, k=4, n=100,
+                       iters=1_000, N=30_000,
+                       pad=2, mu=5, p=50, std=1):
     """
     Instancia de un experimento con los parámetros
     n      = tamaño de la malla
@@ -591,6 +602,65 @@ def experimento(a=0.1,       b=0.2, k=4, n=100,
                    k=k,
                    P=agentes,                             
                    params={'tipo' : 'gaussian', 'gauss_mean': mu, 'gauss_std': std}, 
+                   a = a, 
+                   b = b,
+                   pad=pad)
+    T[0] = dict_a_array(V.ocupacion, (n,n))
+    e, h, bins_e = Obs.estres(V)
+    o, bins_o    = Obs.ocupacion(V)
+    observables['estres'].append(e)
+    observables['remanente'].append(h)
+    observables['ocupacion'].append(o)
+
+
+    print(f"Corriendo las {iters} iteraciones")
+    for j in range(1,iters):
+        dinititer = datetime.datetime.now()
+        if(not j%p):
+            print(f"Iteracion {j}")
+            e,h, _ = Obs.estres(V)
+            o, _   = Obs.ocupacion(V)
+            observables['estres'].append(e)
+            observables['remanente'].append(h)
+            observables['ocupacion'].append(o)
+        V.itera(dbg=False)
+        T[j] = dict_a_array(V.ocupacion, (n,n))
+        denditer = datetime.datetime.now()
+        print(f"\t\tTiempo de iteracion {j} {(denditer-dinititer).total_seconds()} segundos")
+
+
+
+    print(f"--> Iteracion {iters} <--")
+    
+    return T, observables, bins_e
+
+
+def experimento_exponencial(a=0.1,       b=0.2, k=4, n=100,
+                            iters=1_000, N=30_000, 
+                            pad=2, mu=1_000, p=50):
+    """
+    Instancia de un experimento con los parámetros
+    n      = tamaño de la malla
+    mu     = valor medio del salario de cada agente
+    iters  = cantidad de agentes 
+    M      = cantidad de iteraciones
+    a      = alfa
+    b      = beta 
+    k      = capacidad de carga
+    p      = con qué frecuencia se reporta en pantalla
+    """
+
+    T = np.zeros((iters,n,n))
+    observables = {'estres'    : [],
+                   'remanente' : [],
+                   'ocupacion' : []}
+    agentes = crea_agentes_exponencial(N=N, mu=mu)
+    n_ags = len(agentes)
+    print(f"Generando vecindario de {n}^2 capacidad de carga {k} y {N} agentes")
+    V = Vecindario(n=n,
+                   k=k,
+                   P=agentes,                             
+                   params={'tipo' : 'power_law', 'mu' : mu}, 
                    a = a, 
                    b = b,
                    pad=pad)
