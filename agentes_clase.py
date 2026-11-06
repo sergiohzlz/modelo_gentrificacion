@@ -1,4 +1,5 @@
 # coding:utf8
+import datetime
 import numpy as np
 from numpy import random  
 
@@ -575,7 +576,7 @@ def crea_agentes_exponencial(rng, N=50_000, mu=15_000):
     return agentes
 
 
-import datetime
+
 def experimento_normal(a=0.1,       b=0.2, k=4, n=100,
                        iters=1_000, N=30_000,
                        pad=2, mu=5, p=50, std=1):
@@ -635,9 +636,11 @@ def experimento_normal(a=0.1,       b=0.2, k=4, n=100,
     return T, observables, bins_e
 
 
-def experimento_exponencial(a=0.1,       b=0.2, k=4, n=100,
+def experimento_exponencial(rng,
+                            a=0.1,       b=0.2, k=4, n=100,
                             iters=1_000, N=30_000, 
-                            pad=2, mu=1_000, p=50):
+                            pad=2, mu=1_000, p=50,
+                            dbg=False):
     """
     Instancia de un experimento con los parámetros
     n      = tamaño de la malla
@@ -654,9 +657,10 @@ def experimento_exponencial(a=0.1,       b=0.2, k=4, n=100,
     observables = {'estres'    : [],
                    'remanente' : [],
                    'ocupacion' : []}
-    agentes = crea_agentes_exponencial(N=N, mu=mu)
+    print(f"Creando {N} agentes con distribución exponencial con parámetro {mu} ")
+    agentes = crea_agentes_exponencial(rng=rng, N=N, mu=mu)
     n_ags = len(agentes)
-    print(f"Generando vecindario de {n}^2 capacidad de carga {k} y {N} agentes")
+    print(f"Generando vecindario de ({n}x{n}) capacidad de carga {k} y {N} agentes")
     V = Vecindario(n=n,
                    k=k,
                    P=agentes,                             
@@ -682,10 +686,11 @@ def experimento_exponencial(a=0.1,       b=0.2, k=4, n=100,
             observables['estres'].append(e)
             observables['remanente'].append(h)
             observables['ocupacion'].append(o)
-        V.itera(dbg=False)
+        V.itera(dbg=dbg)
         T[j] = dict_a_array(V.ocupacion, (n,n))
         denditer = datetime.datetime.now()
-        print(f"\t\tTiempo de iteracion {j} {(denditer-dinititer).total_seconds()} segundos")
+        if(dbg):
+            print(f"\t\tTiempo de iteracion {j} {(denditer-dinititer).total_seconds()} segundos")
 
 
 
